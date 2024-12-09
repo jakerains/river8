@@ -7,11 +7,43 @@ specifies that any user authenticated via an API key can "create", "read",
 "update", and "delete" any "Todo" records.
 =========================================================================*/
 const schema = a.schema({
-  Todo: a
+  Chat: a
     .model({
-      content: a.string(),
+      message: a.string(),
+      isUser: a.boolean(),
+      timestamp: a.string(),
     })
     .authorization((allow) => [allow.publicApiKey()]),
+
+  // AI Conversation route
+  chatConversation: a.conversation({
+    model: process.env.MODEL_ID || "anthropic.claude-3-haiku-20240307-v1:0",
+    provider: "bedrock",
+    temperature: 0.7,
+    maxTokens: 512,
+    topP: 0.9,
+  }).authorization((allow: any) => [allow.publicApiKey()]),
+
+  // AI Generation route
+  generateContent: a.generation({
+    model: process.env.MODEL_ID || "anthropic.claude-3-haiku-20240307-v1:0",
+    provider: "bedrock",
+    temperature: 0.7,
+    maxTokens: 512,
+    topP: 0.9,
+  }).authorization((allow: any) => [allow.publicApiKey()]),
+
+  generateResponse: a
+    .query()
+    .arguments({ prompt: a.string().required() })
+    .returns(a.string())
+    .authorization((allow) => [allow.publicApiKey()])
+    .handler(
+      a.handler.custom({
+        dataSource: "BedrockDataSource",
+        entry: "./generateResponse.js",
+      })
+    ),
 });
 
 export type Schema = ClientSchema<typeof schema>;
